@@ -6,4 +6,4 @@
 -- insert into map_authuser_role (authuser_id, role_id) values (1, 1);
 -- insert into map_authuser_role (authuser_id, role_id) values (1, 2);
 
-insert into user (username, password, enabled, name) values ('test', 'test1234', true, 'Jone');
+insert into user (username, password, enabled, name) values ('test@where.com', 'test1234', true, 'James');

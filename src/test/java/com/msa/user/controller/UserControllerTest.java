@@ -11,8 +11,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @RunWith(SpringRunner.class)
@@ -30,17 +32,29 @@ public class UserControllerTest {
     }
 
     @Test
-    public void getUserList() throws Exception {
-        this.mockMvc.perform(get("/api/users"))
+    public void getUserListWithManagerRole() throws Exception {
+        this.mockMvc.perform(get("/api/users?page=0&count=10")
+                            .with(user("test@where.com").password("test1234").roles("MANAGER")))
                 .andDo(print())
                 .andExpect(status().isOk());
     }
 
     @Test
-    public void getSpecifiedUser() throws Exception {
-        this.mockMvc.perform(get("/api/users/1"))
+    public void getUserInfoByOwner() throws Exception {
+        User user = User.builder()
+                .username("test@where.com")
+                .password("test1234")
+                .name("James")
+                .enabled(true)
+                .build();
+        user.setId(1L);
+        String jsonData = mapper.writeValueAsString(user);
+
+        this.mockMvc.perform(get("/api/users/1")
+                            .with(user("test@where.com").password("test1234").roles("USER")))
                 .andDo(print())
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().json(jsonData));
     }
 
     @Test
@@ -79,11 +93,12 @@ public class UserControllerTest {
                 .andExpect(status().isOk());
     }
 
-
     @Test
-    public void checkUserCount() throws Exception {
-        this.mockMvc.perform(get("/api/users/count"))
+    public void checkUserCountWithManagerRole() throws Exception {
+        this.mockMvc.perform(get("/api/users/count")
+                            .with(user("test@where.com").password("test1234").roles("MANAGER")))
                 .andDo(print())
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().string("1"));
     }
 }
