@@ -8,9 +8,13 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
+import static org.junit.Assert.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -26,16 +30,11 @@ public class UserControllerTest {
 
     private ObjectMapper    mapper = new ObjectMapper();
 
-    @BeforeClass
-    public static void addingTestUser() throws Exception {
-
-    }
-
     @Test
     public void getUserListWithManagerRole() throws Exception {
         this.mockMvc.perform(get("/api/users?page=0&count=10")
                             .with(user("test@where.com").password("test1234").roles("MANAGER")))
-                .andDo(print())
+                //.andDo(print())
                 .andExpect(status().isOk());
     }
 
@@ -52,7 +51,7 @@ public class UserControllerTest {
 
         this.mockMvc.perform(get("/api/users/1")
                             .with(user("test@where.com").password("test1234").roles("USER")))
-                .andDo(print())
+                //.andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(content().json(jsonData));
     }
@@ -66,9 +65,23 @@ public class UserControllerTest {
                 .enabled(true)
                 .build();
 
-        this.mockMvc.perform(post("/api/users", user))
-                .andDo(print())
-                .andExpect(status().isOk());
+        String json = mapper.writeValueAsString(user);
+        MvcResult result = this.mockMvc.perform(post("/api/users")
+                        .content(json)
+                        .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
+                        .with(csrf().asHeader()))
+                //.andDo(print())
+                .andExpect(status().isOk())
+                .andReturn();
+
+        User addedUser = mapper.readValue(result.getResponse().getContentAsString(), User.class);
+        assertTrue(user.getUsername().compareTo(addedUser.getUsername()) == 0);
+        assertTrue(user.getPassword().compareTo(addedUser.getPassword()) == 0);
+        assertTrue(user.getName().compareTo(addedUser.getName()) == 0);
+        assertTrue(user.isEnabled() == addedUser.isEnabled());
+        assertTrue(addedUser.getId() > 0);
+        assertNotNull(addedUser.getRegDate());
+        assertNotNull(addedUser.getModDate());
     }
 
     @Test
@@ -76,29 +89,51 @@ public class UserControllerTest {
         User user = User.builder()
                 .username("guess@whoami.com")
                 .password("test1122")
-                .name("James")
-                .enabled(true)
+                .name("James Cross")
+                .enabled(false)
                 .build();
-        user.setId(1L);
+        user.setId(2L);
 
-        this.mockMvc.perform(put("/api/users/1", user))
-                .andDo(print())
-                .andExpect(status().isOk());
+        String json = mapper.writeValueAsString(user);
+        MvcResult result = this.mockMvc.perform(put("/api/users/2")
+                        .content(json)
+                        .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
+                        .with(user("guest@whoami.com").password("test1122").roles("USER"))
+                        .with(csrf().asHeader()))
+                //.andDo(print())
+                .andExpect(status().isOk())
+                .andReturn();
+
+        User modUser = mapper.readValue(result.getResponse().getContentAsString(), User.class);
+        assertTrue(user.getUsername().compareTo(modUser.getUsername()) == 0);
+        assertTrue(user.getPassword().compareTo(modUser.getPassword()) == 0);
+        assertTrue(user.getName().compareTo(modUser.getName()) == 0);
+        assertTrue(user.isEnabled() == modUser.isEnabled());
+        assertTrue(user.getId() == modUser.getId());
+        assertNotNull(modUser.getModDate());
     }
 
     @Test
     public void deleteUser() throws Exception {
-        this.mockMvc.perform(delete("/api/users/1"))
-                .andDo(print())
+        this.mockMvc.perform(delete("/api/users/2")
+                        .with(user("guest@whoami.com").password("test1122").roles("USER"))
+                        .with(csrf().asHeader()))
+                //.andDo(print())
                 .andExpect(status().isOk());
+
+        this.mockMvc.perform(get("/api/users/2")
+                        .with(user("guest@whoami.com").password("test1122").roles("USER")))
+                //.andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(content().string(""));
     }
 
     @Test
     public void checkUserCountWithManagerRole() throws Exception {
         this.mockMvc.perform(get("/api/users/count")
                             .with(user("test@where.com").password("test1234").roles("MANAGER")))
-                .andDo(print())
+                //.andDo(print())
                 .andExpect(status().isOk())
-                .andExpect(content().string("1"));
+                .andExpect(content().string("2"));
     }
 }

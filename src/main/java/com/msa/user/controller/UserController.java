@@ -44,7 +44,8 @@ public class UserController {
 
     @DeleteMapping(path = "/api/users/{id}")
     public ResponseEntity delete(Principal principal, HttpServletRequest request, @PathVariable("id") Long id) {
-        return new ResponseEntity(userService.get(id), HttpStatus.OK);
+        userService.delete(id);
+        return new ResponseEntity("", HttpStatus.OK);
     }
 
     @GetMapping(path = "/api/users/count")
